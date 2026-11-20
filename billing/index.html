@@ -1913,8 +1913,7 @@
         </div>
         <p id="fbLoginError" class="hidden text-rose-700 font-semibold bg-rose-50 border border-rose-200 rounded p-2"></p>
         <div class="pt-1 flex items-center justify-between gap-2">
-          <button type="button" id="btnSkipFirebaseLogin" class="px-3 py-2 rounded text-slate-600 hover:bg-slate-100 font-medium">Use Offline Local Mode</button>
-          <button type="submit" id="btnSubmitFirebaseLogin" class="px-5 py-2 rounded bg-[#0f2547] hover:bg-[#1b3b6f] text-[#c59b27] font-extrabold shadow-sm transition">
+                    <button type="submit" id="btnSubmitFirebaseLogin" class="px-5 py-2 rounded bg-[#0f2547] hover:bg-[#1b3b6f] text-[#c59b27] font-extrabold shadow-sm transition">
             Sign In &amp; Sync Cloud
           </button>
         </div>
@@ -4755,7 +4754,6 @@
         const loginModal = document.getElementById('modalFirebaseLogin');
         const loginForm = document.getElementById('formFirebaseLogin');
         const loginErr = document.getElementById('fbLoginError');
-        const btnSkipLogin = document.getElementById('btnSkipFirebaseLogin');
         const btnSignOut = document.getElementById('btnCloudSignOut');
         const btnSyncBadge = document.getElementById('btnCloudSyncBadge');
 
@@ -4801,14 +4799,6 @@
           });
         }
 
-        if (btnSkipLogin) {
-          btnSkipLogin.addEventListener('click', function () {
-            fbOfflineBypass = true;
-            if (loginModal) loginModal.classList.add('hidden');
-            updateCloudSyncBadge('local', 'Offline Local Mode');
-            showToast('Working in offline local browser mode.');
-          });
-        }
 
         if (btnSignOut) {
           btnSignOut.addEventListener('click', function () {
