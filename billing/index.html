@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>ALMIRZAM FREIGHT BROKER L.L.C. — UAE Freight &amp; Tax Invoice Application</title>
-       <link rel="icon" type="image/png" href="./favicon.png?v=4" />
+  <link rel="icon" type="image/png" href="./favicon.png?v=4" />
 <link rel="apple-touch-icon" href="./favicon.png?v=4" />
   <script src="https://cdn.tailwindcss.com/3.4.17"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -1633,13 +1633,28 @@
           <input type="text" id="payNotesInput" class="editable-input" placeholder="Optional remarks, clearing date, or batch reference..." />
         </div>
 
-        <div class="p-3 bg-amber-50/60 border border-amber-200 rounded space-y-2">
+        <div class="p-3 bg-amber-50/60 border border-amber-200 rounded space-y-2.5">
           <div class="flex flex-wrap items-center justify-between gap-2">
             <span class="font-bold text-amber-900">Cheque Copy / Remittance Advice Attachment</span>
             <label for="payAttachmentInput" class="cursor-pointer px-2.5 py-1 rounded bg-[#0f2547] hover:bg-[#1b3b6f] text-white font-semibold transition">
               Upload Copy (Image / PDF)
               <input type="file" id="payAttachmentInput" accept="image/*,.pdf" class="hidden" />
             </label>
+          </div>
+          <div class="pt-2 border-t border-amber-200/80 grid grid-cols-1 sm:grid-cols-12 gap-2 items-end">
+            <div class="sm:col-span-4">
+              <label for="payAttachmentLabelInput" class="block font-bold text-[#0f2547] mb-1 text-[11px]">Attachment Label (Cloud Synced)</label>
+              <input type="text" id="payAttachmentLabelInput" placeholder="e.g. Cheque #458921.pdf" class="editable-input text-xs" />
+            </div>
+            <div class="sm:col-span-6">
+              <label for="payAttachmentUrlInput" class="block font-bold text-[#0f2547] mb-1 text-[11px]">Attachment / Google Drive Share Link</label>
+              <input type="url" id="payAttachmentUrlInput" placeholder="https://drive.google.com/file/d/..." class="editable-input text-xs" />
+            </div>
+            <div class="sm:col-span-2">
+              <button type="button" id="btnSavePayAttachmentLink" class="w-full px-2.5 py-2 rounded bg-emerald-600 hover:bg-emerald-700 text-white font-bold transition shadow-xs text-[11px]">
+                + Save Link
+              </button>
+            </div>
           </div>
           <div id="payAttachmentStatus" class="text-[11px] text-slate-600 flex items-center justify-between gap-2">
             <span>No cheque copy or remittance slip attached yet.</span>
@@ -2063,7 +2078,7 @@
       let currentCancelledAt = '';
       let currentCancelReason = '';
       let currentPaidStatus = 'Unpaid';
-      let currentPaymentDetails = { method: 'Bank Transfer (TT)', amountPaid: 0, date: '', ref: '', bank: '', notes: '', attachmentId: '', attachmentName: '', attachmentType: '' };
+      let currentPaymentDetails = { method: 'Bank Transfer (TT)', amountPaid: 0, date: '', ref: '', bank: '', notes: '', attachmentId: '', attachmentName: '', attachmentType: '', attachmentUrl: '' };
       let currentEDocs = [];
       let pendingConfirmCallback = null;
       let activePayModalIdx = -1;
@@ -4016,7 +4031,7 @@
         currentCancelledAt = state.cancelledAt || '';
         currentCancelReason = state.cancelReason || '';
         currentPaidStatus = state.isCancelled ? 'Cancelled' : (state.paidStatus || computeInvoicePaidStatus(state));
-        currentPaymentDetails = Object.assign({ method: 'Bank Transfer (TT)', amountPaid: parseFloat(state.invAdvancePaid || '0') || 0, date: '', ref: '', bank: '', notes: '', attachmentId: '', attachmentName: '', attachmentType: '' }, state.paymentDetails || {});
+        currentPaymentDetails = Object.assign({ method: 'Bank Transfer (TT)', amountPaid: parseFloat(state.invAdvancePaid || '0') || 0, date: '', ref: '', bank: '', notes: '', attachmentId: '', attachmentName: '', attachmentType: '', attachmentUrl: '' }, state.paymentDetails || {});
         currentEDocs = Array.isArray(state.eDocs) ? JSON.parse(JSON.stringify(state.eDocs)) : [];
 
         calculateDueDate();
@@ -4161,11 +4176,11 @@
           }
 
           let remitHtml = '<span class="text-slate-400 italic text-[11px]">-</span>';
-          if (pd.method || pd.ref || pd.attachmentName) {
+          if (pd.method || pd.ref || pd.attachmentName || pd.attachmentUrl) {
             const parts = [];
             if (pd.method) parts.push('<span class="font-semibold text-slate-700">' + escapeHtml(pd.method) + '</span>');
             if (pd.ref) parts.push('<span class="text-[10px] text-slate-500">Ref: ' + escapeHtml(pd.ref) + '</span>');
-            if (pd.attachmentName) parts.push('<span class="inline-block px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-700 border border-indigo-200 text-[9px] font-bold">Copy Attached</span>');
+            if (pd.attachmentUrl) parts.push('<a href="' + escapeHtml(pd.attachmentUrl) + '" target="_blank" rel="noopener noreferrer" class="inline-block px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-300 hover:bg-emerald-100 text-[9px] font-bold underline">' + escapeHtml(pd.attachmentName || 'View Attachment') + '</a>'); else if (pd.attachmentName) parts.push('<span class="inline-block px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-700 border border-indigo-200 text-[9px] font-bold">Copy Attached</span>');
             remitHtml = '<div class="flex flex-col leading-tight">' + parts.join('') + '</div>';
           }
 
@@ -5803,23 +5818,40 @@
         function renderPayAttachmentStatus() {
           const box = document.getElementById('payAttachmentStatus');
           if (!box) return;
-          if (activePayTempAttachment && activePayTempAttachment.attachmentName) {
+          const hasUrl = Boolean(activePayTempAttachment && activePayTempAttachment.attachmentUrl);
+          const hasName = Boolean(activePayTempAttachment && activePayTempAttachment.attachmentName);
+          if (hasUrl || hasName) {
+            const displayLabel = activePayTempAttachment.attachmentName || activePayTempAttachment.attachmentUrl;
+            const badgeHtml = hasUrl
+              ? '<span class="px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 border border-emerald-300 font-bold text-[10px] shrink-0">Cloud Link (Synced)</span>'
+              : '<span class="px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 border border-amber-300 font-semibold text-[10px] shrink-0">This Browser Only</span>';
             box.innerHTML =
-              '<span class="font-semibold text-emerald-800 truncate">Attached: ' + escapeHtml(activePayTempAttachment.attachmentName) + '</span>' +
+              '<div class="flex items-center gap-1.5 min-w-0">' +
+                badgeHtml +
+                '<span class="font-semibold text-emerald-800 truncate">' + escapeHtml(displayLabel) + '</span>' +
+              '</div>' +
               '<div class="flex items-center gap-1.5 shrink-0">' +
-                '<button type="button" id="btnPreviewPayAttachment" class="px-2 py-0.5 rounded bg-indigo-100 text-indigo-800 font-semibold hover:bg-indigo-200">Preview / Download</button>' +
+                '<button type="button" id="btnPreviewPayAttachment" class="px-2 py-0.5 rounded bg-indigo-100 text-indigo-800 font-semibold hover:bg-indigo-200">' + (hasUrl ? 'Open Link' : 'Preview / Download') + '</button>' +
                 '<button type="button" id="btnRemovePayAttachment" class="px-2 py-0.5 rounded bg-rose-100 text-rose-800 font-semibold hover:bg-rose-200">Remove</button>' +
               '</div>';
             document.getElementById('btnPreviewPayAttachment').addEventListener('click', function () {
+              if (activePayTempAttachment.attachmentUrl) {
+                window.open(activePayTempAttachment.attachmentUrl, '_blank', 'noopener,noreferrer');
+                return;
+              }
               getBlobFromEDocsDB(activePayTempAttachment.attachmentId).then(function (rec) {
-                if (!rec || !rec.blob) { showToast('Attachment not found in browser storage.'); return; }
+                if (!rec || !rec.blob) { showToast('Attachment not found in browser storage. Paste a cloud link for cross-device access.'); return; }
                 const url = URL.createObjectURL(rec.blob);
                 window.open(url, '_blank');
               });
             });
             document.getElementById('btnRemovePayAttachment').addEventListener('click', function () {
               if (activePayTempAttachment.attachmentId) deleteBlobFromEDocsDB(activePayTempAttachment.attachmentId);
-              activePayTempAttachment = { attachmentId: '', attachmentName: '', attachmentType: '' };
+              activePayTempAttachment = { attachmentId: '', attachmentName: '', attachmentType: '', attachmentUrl: '' };
+              const lblEl = document.getElementById('payAttachmentLabelInput');
+              const urlEl = document.getElementById('payAttachmentUrlInput');
+              if (lblEl) lblEl.value = '';
+              if (urlEl) urlEl.value = '';
               renderPayAttachmentStatus();
             });
           } else {
@@ -5852,8 +5884,13 @@
           activePayTempAttachment = {
             attachmentId: pd.attachmentId || '',
             attachmentName: pd.attachmentName || '',
-            attachmentType: pd.attachmentType || ''
+            attachmentType: pd.attachmentType || '',
+            attachmentUrl: pd.attachmentUrl || ''
           };
+          const payLblEl = document.getElementById('payAttachmentLabelInput');
+          const payUrlEl = document.getElementById('payAttachmentUrlInput');
+          if (payLblEl) payLblEl.value = pd.attachmentUrl ? (pd.attachmentName || '') : '';
+          if (payUrlEl) payUrlEl.value = pd.attachmentUrl || '';
           updatePayModalPreview();
           renderPayAttachmentStatus();
           document.getElementById('modalPaymentRemittance').classList.remove('hidden');
@@ -5886,7 +5923,11 @@
           const attId = 'PAY-' + Date.now() + '-' + Math.random().toString(36).substr(2, 6);
           saveBlobToEDocsDB(attId, file).then(function (ok) {
             if (ok) {
-              activePayTempAttachment = { attachmentId: attId, attachmentName: file.name, attachmentType: file.type };
+              activePayTempAttachment = { attachmentId: attId, attachmentName: file.name, attachmentType: file.type, attachmentUrl: '' };
+              const payLblEl = document.getElementById('payAttachmentLabelInput');
+              const payUrlEl = document.getElementById('payAttachmentUrlInput');
+              if (payLblEl) payLblEl.value = '';
+              if (payUrlEl) payUrlEl.value = '';
               renderPayAttachmentStatus();
               showToast('Cheque / remittance copy attached: ' + file.name);
             } else {
@@ -5901,7 +5942,44 @@
         document.getElementById('btnCancelPayModal').addEventListener('click', function () {
           document.getElementById('modalPaymentRemittance').classList.add('hidden');
         });
+        const btnSavePayLink = document.getElementById('btnSavePayAttachmentLink');
+        if (btnSavePayLink) {
+          btnSavePayLink.addEventListener('click', function () {
+            const lblEl = document.getElementById('payAttachmentLabelInput');
+            const urlEl = document.getElementById('payAttachmentUrlInput');
+            const url = (urlEl ? urlEl.value : '').trim();
+            const lbl = (lblEl ? lblEl.value : '').trim();
+            if (!url) {
+              showToast('Paste an attachment or Google Drive share link first.');
+              return;
+            }
+            if (!/^https?:\/\//i.test(url)) {
+              showToast('Please enter a valid URL starting with https://');
+              return;
+            }
+            activePayTempAttachment = {
+              attachmentId: 'GDRIVE-PAY-' + Date.now(),
+              attachmentName: lbl || 'Cheque / Remittance Copy',
+              attachmentType: 'url/link',
+              attachmentUrl: url
+            };
+            renderPayAttachmentStatus();
+            showToast('Attachment link ready. Click Save Payment Details to store.');
+          });
+        }
         document.getElementById('btnSavePayModal').addEventListener('click', function () {
+          const payUrlEl = document.getElementById('payAttachmentUrlInput');
+          const payLblEl = document.getElementById('payAttachmentLabelInput');
+          const pendingUrl = (payUrlEl ? payUrlEl.value : '').trim();
+          const pendingLbl = (payLblEl ? payLblEl.value : '').trim();
+          if (pendingUrl && /^https?:\/\//i.test(pendingUrl)) {
+            activePayTempAttachment = {
+              attachmentId: (activePayTempAttachment && activePayTempAttachment.attachmentId) || ('GDRIVE-PAY-' + Date.now()),
+              attachmentName: pendingLbl || (activePayTempAttachment && activePayTempAttachment.attachmentName) || 'Cheque / Remittance Copy',
+              attachmentType: 'url/link',
+              attachmentUrl: pendingUrl
+            };
+          }
           const total = parseFloat((document.getElementById('payModalTotal').textContent || '0').replace(/,/g, '')) || 0;
           const paidAmt = Math.max(0, parseFloat(document.getElementById('payAmountInput').value) || 0);
           const bal = Math.max(0, total - paidAmt);
@@ -5915,7 +5993,8 @@
             notes: document.getElementById('payNotesInput').value.trim(),
             attachmentId: activePayTempAttachment ? activePayTempAttachment.attachmentId : '',
             attachmentName: activePayTempAttachment ? activePayTempAttachment.attachmentName : '',
-            attachmentType: activePayTempAttachment ? activePayTempAttachment.attachmentType : ''
+            attachmentType: activePayTempAttachment ? activePayTempAttachment.attachmentType : '',
+            attachmentUrl: activePayTempAttachment ? (activePayTempAttachment.attachmentUrl || '') : ''
           };
 
           if (activePayModalIsCurrent) {
@@ -6257,7 +6336,7 @@
             copy.cancelReason = '';
             copy.paidStatus = 'Unpaid';
             copy.invAdvancePaid = '0';
-            copy.paymentDetails = { method: 'Bank Transfer (TT)', amountPaid: 0, date: '', ref: '', bank: '', notes: '', attachmentId: '', attachmentName: '', attachmentType: '' };
+            copy.paymentDetails = { method: 'Bank Transfer (TT)', amountPaid: 0, date: '', ref: '', bank: '', notes: '', attachmentId: '', attachmentName: '', attachmentType: '', attachmentUrl: '' };
             copy.eDocs = [];
             (copy.lineItems || []).forEach(function (li) { li.costPosted = false; li.sellPosted = false; });
             savedInvoices.unshift(copy);
@@ -6359,7 +6438,7 @@
             copy.cancelReason = '';
             copy.paidStatus = 'Unpaid';
             copy.invAdvancePaid = '0';
-            copy.paymentDetails = { method: 'Bank Transfer (TT)', amountPaid: 0, date: '', ref: '', bank: '', notes: '', attachmentId: '', attachmentName: '', attachmentType: '' };
+            copy.paymentDetails = { method: 'Bank Transfer (TT)', amountPaid: 0, date: '', ref: '', bank: '', notes: '', attachmentId: '', attachmentName: '', attachmentType: '', attachmentUrl: '' };
             copy.eDocs = [];
             (copy.lineItems || []).forEach(function (li) { li.costPosted = false; li.sellPosted = false; });
             savedInvoices.unshift(copy);
