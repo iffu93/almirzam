@@ -405,6 +405,10 @@
       }
     }
   </style>
+  <!-- Firebase Compat SDKs (Auth & Firestore - No Card / Spark Plan Compatible) -->
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
   <style id="dynamicPrintPageStyle"></style>
 </head>
 <body class="min-h-screen flex flex-col">
@@ -455,6 +459,13 @@
 
       <!-- Action Buttons -->
       <div class="flex flex-wrap items-center gap-1.5">
+        <button type="button" id="btnCloudSyncBadge" class="px-2.5 py-1.5 rounded text-xs font-semibold bg-slate-800 text-amber-300 border border-slate-600 transition flex items-center gap-1.5" title="Firebase Cloud Sync Status">
+          <span id="cloudSyncDot" class="w-2 h-2 rounded-full bg-amber-400"></span>
+          <span id="cloudSyncLabel">Local Mode</span>
+        </button>
+        <button type="button" id="btnCloudSignOut" class="hidden px-2.5 py-1.5 rounded text-xs font-medium bg-rose-900/70 hover:bg-rose-800 text-rose-100 border border-rose-600/60 transition" title="Sign out of Firebase Cloud Sync">
+          Sign Out
+        </button>
         <button type="button" id="btnAutoNewJobTop" class="px-3 py-1.5 rounded text-xs font-bold bg-[#c59b27] hover:bg-[#d4a930] text-[#0f2547] shadow-sm transition flex items-center gap-1.5" title="Create a new freight job with auto-incremented Job # and Invoice #">
           <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
           + New Job
@@ -1629,7 +1640,7 @@
         <button type="button" id="btnCloseEDocsModal" class="text-slate-300 hover:text-white font-bold text-lg">&times;</button>
       </div>
       <div class="p-4 overflow-y-auto space-y-4 text-xs">
-        <div class="bg-slate-50 border border-slate-200 rounded-lg p-3 space-y-2.5">
+        <div class="bg-slate-50 border border-slate-200 rounded-lg p-3 space-y-3">
           <div class="grid grid-cols-1 sm:grid-cols-12 gap-2.5 items-end">
             <div class="sm:col-span-5">
               <label for="edocsCategorySelect" class="block font-bold text-slate-700 mb-1">Document Type</label>
@@ -1644,13 +1655,28 @@
               </select>
             </div>
             <div class="sm:col-span-7 flex flex-wrap items-center gap-2">
-              <label for="edocsFileInput" class="cursor-pointer flex-1 text-center px-3 py-2 rounded bg-indigo-700 hover:bg-indigo-800 text-white font-bold transition shadow-xs">
-                + Select &amp; Upload E-Docs (PDF, Images, Office)
+              <label for="edocsFileInput" class="cursor-pointer flex-1 text-center px-3 py-2 rounded bg-slate-700 hover:bg-slate-800 text-white font-bold transition shadow-xs">
+                + Attach Local File (This Browser Only)
                 <input type="file" id="edocsFileInput" multiple accept=".pdf,image/*,.doc,.docx,.xls,.xlsx,.csv,.txt" class="hidden" />
               </label>
             </div>
           </div>
-          <p id="edocsStorageNote" class="text-[11px] text-slate-500">Files are saved persistently in browser storage (IndexedDB) and linked to this job. Configure a Backend Server URL in Settings to also sync uploads to your server.</p>
+          <div class="pt-2.5 border-t border-slate-200 grid grid-cols-1 sm:grid-cols-12 gap-2 items-end">
+            <div class="sm:col-span-4">
+              <label for="edocsDriveLabelInput" class="block font-bold text-[#0f2547] mb-1">Google Drive File Label (Cloud Synced)</label>
+              <input type="text" id="edocsDriveLabelInput" placeholder="e.g. MAWB 176-12345678.pdf" class="editable-input text-xs" />
+            </div>
+            <div class="sm:col-span-6">
+              <label for="edocsDriveUrlInput" class="block font-bold text-[#0f2547] mb-1">Google Drive Share Link</label>
+              <input type="url" id="edocsDriveUrlInput" placeholder="https://drive.google.com/file/d/..." class="editable-input text-xs" />
+            </div>
+            <div class="sm:col-span-2">
+              <button type="button" id="btnAddDriveEdoc" class="w-full px-3 py-2 rounded bg-emerald-600 hover:bg-emerald-700 text-white font-bold transition shadow-xs">
+                + Save Link
+              </button>
+            </div>
+          </div>
+          <p id="edocsStorageNote" class="text-[11px] text-slate-600"><strong>Multi-Device Tip:</strong> Upload PDFs to your <em>Al Mirzam Job E-Documents</em> Google Drive folder and paste the link above so it syncs across all devices via Firebase Firestore.</p>
         </div>
 
         <div class="border border-slate-200 rounded-lg overflow-hidden">
@@ -1896,6 +1922,34 @@
 
   <div id="serviceAutocompletePopup" class="no-print hidden fixed z-50 bg-white border border-[#0f2547] rounded-md shadow-xl max-h-60 overflow-y-auto text-xs" role="listbox" aria-label="Service and Charge Item suggestions"></div>
   <div id="customerAutocompletePopup" class="no-print hidden fixed z-50 bg-white border border-[#0f2547] rounded-md shadow-xl max-h-60 overflow-y-auto text-xs" role="listbox" aria-label="Customer suggestions"></div>
+
+  <!-- Firebase Staff Authentication Gate Modal -->
+  <div id="modalFirebaseLogin" class="no-print fixed inset-0 z-50 hidden bg-[#0f2547]/95 flex items-center justify-center p-4">
+    <div class="bg-white rounded-xl shadow-2xl max-w-md w-full border-2 border-[#c59b27] overflow-hidden">
+      <div class="bg-[#0f2547] text-white px-5 py-4 border-b-2 border-[#c59b27]">
+        <h3 class="font-extrabold text-base tracking-wide">ALMIRZAM FREIGHT BROKER L.L.C.</h3>
+        <p class="text-xs text-amber-200 mt-0.5">Firebase Cloud Sync &mdash; Staff Sign-In</p>
+      </div>
+      <form id="formFirebaseLogin" class="p-5 space-y-4 text-xs">
+        <p class="text-slate-600 leading-relaxed">Sign in with your authorized Al Mirzam staff email and password to sync jobs, invoices, master data, and Google Drive E-Document links in real time across devices.</p>
+        <div>
+          <label for="fbLoginEmail" class="block font-bold text-slate-700 mb-1">Staff Email</label>
+          <input type="email" id="fbLoginEmail" required value="operations@almirzamgroup.com" class="editable-input text-sm py-2" placeholder="operations@almirzamgroup.com" />
+        </div>
+        <div>
+          <label for="fbLoginPassword" class="block font-bold text-slate-700 mb-1">Password</label>
+          <input type="password" id="fbLoginPassword" required class="editable-input text-sm py-2" placeholder="Enter your Firebase staff password" />
+        </div>
+        <p id="fbLoginError" class="hidden text-rose-700 font-semibold bg-rose-50 border border-rose-200 rounded p-2"></p>
+        <div class="pt-1 flex items-center justify-between gap-2">
+          <button type="button" id="btnSkipFirebaseLogin" class="px-3 py-2 rounded text-slate-600 hover:bg-slate-100 font-medium">Use Offline Local Mode</button>
+          <button type="submit" id="btnSubmitFirebaseLogin" class="px-5 py-2 rounded bg-[#0f2547] hover:bg-[#1b3b6f] text-[#c59b27] font-extrabold shadow-sm transition">
+            Sign In &amp; Sync Cloud
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
 
   <script>
     (function () {
@@ -2188,6 +2242,143 @@
       let lineItems = [];
       let nextRowId = 1;
 
+      // =========================================================================
+      // FIREBASE FIRESTORE CLOUD SYNC (SPARK NO-COST PLAN - NO CARD REQUIRED)
+      // Paste your 6 firebaseConfig values from Firebase Console > Project Settings
+      // =========================================================================
+      const FIREBASE_CONFIG = {
+        apiKey: "AIzaSyCoviwE-crLns0dQtROULQvhMm5mG3ZntA",
+        authDomain: "billing-app-86e2c.firebaseapp.com",
+        projectId: "billing-app-86e2c",
+        storageBucket: "billing-app-86e2c.firebasestorage.app",
+        messagingSenderId: "488363599835",
+        appId: "1:488363599835:web:f56229ceed55f69cca69fe"
+      };
+
+      const isFirebaseConfigured = Boolean(
+        FIREBASE_CONFIG &&
+        FIREBASE_CONFIG.apiKey &&
+        FIREBASE_CONFIG.apiKey.indexOf("PASTE_") === -1 &&
+        FIREBASE_CONFIG.projectId &&
+        FIREBASE_CONFIG.projectId.indexOf("PASTE_") === -1
+      );
+
+      let fbAuth = null;
+      let fbDb = null;
+      let fbCurrentUser = null;
+      let fbOfflineBypass = false;
+      let fbSyncTimer = null;
+
+      function updateCloudSyncBadge(state, text) {
+        const dot = document.getElementById('cloudSyncDot');
+        const lbl = document.getElementById('cloudSyncLabel');
+        const outBtn = document.getElementById('btnCloudSignOut');
+        if (lbl) lbl.textContent = text;
+        if (dot) {
+          dot.className = 'w-2 h-2 rounded-full ' + (
+            state === 'synced' ? 'bg-emerald-400' :
+            state === 'syncing' ? 'bg-sky-400 animate-pulse' :
+            state === 'error' ? 'bg-rose-400' : 'bg-amber-400'
+          );
+        }
+        if (outBtn) {
+          outBtn.classList.toggle('hidden', !fbCurrentUser);
+        }
+      }
+
+      if (isFirebaseConfigured && window.firebase) {
+        try {
+          if (!firebase.apps.length) {
+            firebase.initializeApp(FIREBASE_CONFIG);
+          }
+          fbAuth = firebase.auth();
+          fbDb = firebase.firestore();
+        } catch (fbInitErr) {
+          console.error('Firebase init error:', fbInitErr);
+        }
+      }
+
+      function scheduleFirebaseSync() {
+        if (!fbDb || !fbCurrentUser) return;
+        updateCloudSyncBadge('syncing', 'Syncing...');
+        clearTimeout(fbSyncTimer);
+        fbSyncTimer = setTimeout(function () {
+          pushAllStateToFirestore();
+        }, 500);
+      }
+
+      function pushAllStateToFirestore() {
+        if (!fbDb || !fbCurrentUser) return Promise.resolve();
+        const batch = fbDb.batch();
+        const settingsRef = fbDb.collection('almirzam_state').doc('settings');
+        batch.set(settingsRef, {
+          payload: JSON.stringify(appSettings),
+          updatedAt: new Date().toISOString(),
+          updatedBy: fbCurrentUser.email || ''
+        }, { merge: true });
+
+        const invRegistryRef = fbDb.collection('almirzam_state').doc('invoices_registry');
+        batch.set(invRegistryRef, {
+          payload: JSON.stringify(savedInvoices),
+          count: savedInvoices.length,
+          updatedAt: new Date().toISOString(),
+          updatedBy: fbCurrentUser.email || ''
+        }, { merge: true });
+
+        return batch.commit().then(function () {
+          updateCloudSyncBadge('synced', 'Cloud Synced');
+        }).catch(function (err) {
+          console.error('Firestore sync error:', err);
+          updateCloudSyncBadge('error', 'Sync Error');
+          showToast('Cloud sync warning: ' + (err.message || 'Check Firestore rules'));
+        });
+      }
+
+      function pullAllStateFromFirestore() {
+        if (!fbDb || !fbCurrentUser) return Promise.resolve();
+        updateCloudSyncBadge('syncing', 'Loading Cloud...');
+        return Promise.all([
+          fbDb.collection('almirzam_state').doc('settings').get(),
+          fbDb.collection('almirzam_state').doc('invoices_registry').get()
+        ]).then(function (snaps) {
+          const setSnap = snaps[0];
+          const invSnap = snaps[1];
+          let hasRemoteData = false;
+
+          if (setSnap.exists && setSnap.data() && setSnap.data().payload) {
+            hasRemoteData = true;
+            const parsedSettings = JSON.parse(setSnap.data().payload);
+            appSettings = Object.assign({}, DEFAULT_SETTINGS, parsedSettings);
+            try { localStorage.setItem(STORAGE_KEY_SETTINGS, JSON.stringify(appSettings)); } catch (e) {}
+          }
+          if (invSnap.exists && invSnap.data() && invSnap.data().payload) {
+            hasRemoteData = true;
+            const parsedInvoices = JSON.parse(invSnap.data().payload);
+            if (Array.isArray(parsedInvoices)) {
+              savedInvoices = parsedInvoices;
+              try { localStorage.setItem(STORAGE_KEY_SAVED, JSON.stringify(savedInvoices)); } catch (e) {}
+            }
+          }
+
+          refreshMasterDataDatalists();
+          syncSettingsToUI();
+          renderSavedInvoicesTable();
+          if (document.getElementById('viewSOA') && !document.getElementById('viewSOA').classList.contains('hidden')) {
+            renderSOAView();
+          }
+
+          if (!hasRemoteData && (savedInvoices.length > 0 || appSettings.companyTrn.indexOf('[') === -1)) {
+            // First-time migration of existing local browser data to Firestore
+            return pushAllStateToFirestore();
+          }
+          updateCloudSyncBadge('synced', 'Cloud Synced');
+        }).catch(function (err) {
+          console.error('Firestore load error:', err);
+          updateCloudSyncBadge('error', 'Cloud Read Error');
+          showToast('Could not read cloud data: ' + (err.message || 'Check connection'));
+        });
+      }
+
       function safeGetStorage(key) {
         try {
           return localStorage.getItem(key);
@@ -2201,6 +2392,9 @@
           localStorage.setItem(key, val);
         } catch (err) {
           // In-memory fallback
+        }
+        if (key === STORAGE_KEY_SETTINGS || key === STORAGE_KEY_SAVED) {
+          scheduleFirebaseSync();
         }
       }
 
@@ -4591,6 +4785,91 @@
         createNewJob(false);
         renderSavedInvoicesTable();
 
+        // Firebase Auth & Cloud Sync Startup Wiring
+        const loginModal = document.getElementById('modalFirebaseLogin');
+        const loginForm = document.getElementById('formFirebaseLogin');
+        const loginErr = document.getElementById('fbLoginError');
+        const btnSkipLogin = document.getElementById('btnSkipFirebaseLogin');
+        const btnSignOut = document.getElementById('btnCloudSignOut');
+        const btnSyncBadge = document.getElementById('btnCloudSyncBadge');
+
+        if (!isFirebaseConfigured) {
+          updateCloudSyncBadge('local', 'Local Mode (Add Firebase Keys)');
+        } else if (fbAuth) {
+          fbAuth.onAuthStateChanged(function (user) {
+            fbCurrentUser = user || null;
+            if (user) {
+              if (loginModal) loginModal.classList.add('hidden');
+              pullAllStateFromFirestore().then(function () {
+                if (!currentEditingJobId) {
+                  createNewJob(false);
+                }
+              });
+            } else if (!fbOfflineBypass) {
+              updateCloudSyncBadge('local', 'Sign In Required');
+              if (loginModal) loginModal.classList.remove('hidden');
+            }
+          });
+        }
+
+        if (loginForm) {
+          loginForm.addEventListener('submit', function (e) {
+            e.preventDefault();
+            if (!fbAuth) return;
+            const email = document.getElementById('fbLoginEmail').value.trim();
+            const password = document.getElementById('fbLoginPassword').value;
+            const submitBtn = document.getElementById('btnSubmitFirebaseLogin');
+            if (loginErr) loginErr.classList.add('hidden');
+            if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'Signing in...'; }
+            fbAuth.signInWithEmailAndPassword(email, password).then(function () {
+              fbOfflineBypass = false;
+              showToast('Signed in to Al Mirzam Cloud Sync.');
+            }).catch(function (err) {
+              if (loginErr) {
+                loginErr.textContent = err.message || 'Invalid email or password.';
+                loginErr.classList.remove('hidden');
+              }
+            }).finally(function () {
+              if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'Sign In & Sync Cloud'; }
+            });
+          });
+        }
+
+        if (btnSkipLogin) {
+          btnSkipLogin.addEventListener('click', function () {
+            fbOfflineBypass = true;
+            if (loginModal) loginModal.classList.add('hidden');
+            updateCloudSyncBadge('local', 'Offline Local Mode');
+            showToast('Working in offline local browser mode.');
+          });
+        }
+
+        if (btnSignOut) {
+          btnSignOut.addEventListener('click', function () {
+            if (fbAuth) {
+              fbOfflineBypass = false;
+              fbAuth.signOut().then(function () {
+                showToast('Signed out of Cloud Sync.');
+              });
+            }
+          });
+        }
+
+        if (btnSyncBadge) {
+          btnSyncBadge.addEventListener('click', function () {
+            if (!isFirebaseConfigured) {
+              showToast('Paste your 6 firebaseConfig keys in billing/index.html to enable Cloud Sync.');
+            } else if (!fbCurrentUser && loginModal) {
+              fbOfflineBypass = false;
+              loginModal.classList.remove('hidden');
+            } else {
+              pullAllStateFromFirestore().then(function () {
+                showToast('Refreshed latest jobs & settings from Firebase Cloud.');
+              });
+            }
+          });
+        }
+
         // Navigation Tabs
         document.querySelectorAll('.tab-nav-btn').forEach(function (btn) {
           btn.addEventListener('click', function () {
@@ -5678,9 +5957,11 @@
             const tr = document.createElement('tr');
             tr.className = 'hover:bg-slate-50';
             const sizeKb = doc.size ? (doc.size >= 1048576 ? (doc.size / 1048576).toFixed(2) + ' MB' : Math.max(1, Math.round(doc.size / 1024)) + ' KB') : '-';
-            const storageBadge = doc.syncedToServer
-              ? '<span class="px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 font-bold text-[10px]">Server + Local</span>'
-              : '<span class="px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-800 border border-indigo-200 font-semibold text-[10px]">Local Browser</span>';
+            const storageBadge = doc.driveUrl
+              ? '<span class="px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 border border-emerald-300 font-bold text-[10px]">Google Drive (Synced)</span>'
+              : (doc.syncedToServer
+                ? '<span class="px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 font-bold text-[10px]">Server + Local</span>'
+                : '<span class="px-1.5 py-0.5 rounded bg-amber-50 text-amber-800 border border-amber-200 font-semibold text-[10px]">This Browser Only</span>');
             tr.innerHTML =
               '<td class="py-2 px-3 font-semibold text-[#0f2547]">' + escapeHtml(doc.docCategory || 'Document') + '</td>' +
               '<td class="py-2 px-3 font-medium text-slate-800">' + escapeHtml(doc.name || '-') + '</td>' +
@@ -5710,6 +5991,50 @@
         document.getElementById('btnDoneEDocsModal').addEventListener('click', function () {
           document.getElementById('modalEDocs').classList.add('hidden');
         });
+        const btnAddDriveEdoc = document.getElementById('btnAddDriveEdoc');
+        if (btnAddDriveEdoc) {
+          btnAddDriveEdoc.addEventListener('click', function () {
+            const labelEl = document.getElementById('edocsDriveLabelInput');
+            const urlEl = document.getElementById('edocsDriveUrlInput');
+            const cat = document.getElementById('edocsCategorySelect').value;
+            const label = (labelEl.value || '').trim();
+            const driveUrl = (urlEl.value || '').trim();
+            if (!driveUrl) {
+              showToast('Paste a Google Drive share link first.');
+              return;
+            }
+            if (!/^https?:\/\//i.test(driveUrl)) {
+              showToast('Please enter a valid URL starting with https://');
+              return;
+            }
+            const targetInv = getTargetEDocsInv();
+            const targetArr = activeEDocsIsCurrent ? currentEDocs : (targetInv ? (targetInv.eDocs = targetInv.eDocs || []) : currentEDocs);
+            targetArr.push({
+              id: 'GDRIVE-' + Date.now() + '-' + Math.random().toString(36).substr(2, 6),
+              name: label || (cat + ' (Google Drive)'),
+              driveUrl: driveUrl,
+              size: 0,
+              docCategory: cat,
+              uploadedAt: new Date().toISOString(),
+              syncedToServer: true
+            });
+            labelEl.value = '';
+            urlEl.value = '';
+            if (activeEDocsIsCurrent) {
+              upsertCurrentInvoiceInSaved();
+              applyInvoiceLockStateToUI();
+            } else if (targetInv) {
+              if (targetInv.id && targetInv.id === currentEditingJobId) {
+                currentEDocs = JSON.parse(JSON.stringify(targetInv.eDocs || []));
+                applyInvoiceLockStateToUI();
+              }
+              safeSetStorage(STORAGE_KEY_SAVED, JSON.stringify(savedInvoices));
+              renderSavedInvoicesTable();
+            }
+            renderEDocsTable();
+            showToast('Google Drive E-Doc link saved & synced to cloud.');
+          });
+        }
         document.getElementById('edocsFileInput').addEventListener('change', function (e) {
           const files = Array.from(e.target.files || []);
           if (files.length === 0) return;
@@ -5773,8 +6098,12 @@
           const doc = arr[i];
           if (!doc) return;
           if (act === 'view') {
+            if (doc.driveUrl) {
+              window.open(doc.driveUrl, '_blank', 'noopener,noreferrer');
+              return;
+            }
             getBlobFromEDocsDB(doc.id).then(function (rec) {
-              if (!rec || !rec.blob) { showToast('File not found in browser storage.'); return; }
+              if (!rec || !rec.blob) { showToast('Local file not on this device. Use Google Drive link for cross-device access.'); return; }
               const url = URL.createObjectURL(rec.blob);
               const a = document.createElement('a');
               a.href = url;
